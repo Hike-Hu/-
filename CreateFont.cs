@@ -13,43 +13,68 @@ public class CreateFont : Editor
 
     private static BMFont bmFont = new BMFont();
 
-    private static void Init()
-{
-    Object[] objRootPass = Selection.GetFiltered(typeof(UnityEngine.Object), SelectionMode.TopLevel);
-    var rootPass = AssetDatabase.GetAssetPath(objRootPass[0]);
-    //Debug.Log("目录：" + rootPass);//选中目录
-    DirectoryInfo direction = new DirectoryInfo(rootPass);//获取文件夹，exportPath是文件夹的路径
-    FileInfo[] files = direction.GetFiles("*", SearchOption.AllDirectories);
-    foreach (var t in files)
+    private static void NewFont()
     {
-        //判断文件的后缀
-        if (t.Name.EndsWith(".png"))
+        targetFont = null;
+        fontMaterial = null;
+
+        var needName = "";
+        Object[] objRootPass = Selection.GetFiltered(typeof(UnityEngine.Object), SelectionMode.TopLevel);
+        var rootPass = AssetDatabase.GetAssetPath(objRootPass[0]);
+        //Debug.Log("目录：" + rootPass);//选中目录
+        DirectoryInfo direction = new DirectoryInfo(rootPass);//获取文件夹，exportPath是文件夹的路径
+        FileInfo[] files = direction.GetFiles("*", SearchOption.AllDirectories);
+        foreach (var t in files)
         {
-            fontTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(
+            //判断文件的后缀
+            if (t.Name.EndsWith(".png"))
+            {
+                fontTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                    $"{rootPass}/{t.Name}");
+                //Debug.Log("exefiles[i].Name名字为：" + t.Name);//exe文件名
+                //Debug.Log("exefiles[i].FullName名字为：" + files[i].FullName);//exe文件的全部路径名
+                //Debug.Log("exefiles[i].DirectoryName名字为：" + files[i].DirectoryName);//exe所在文件夹的文件夹路径
+            }
+            //判断文件的后缀
+            if (t.Name.EndsWith(".fnt"))
+            {
+                needName = t.Name.Split('.')[0];
+                fntData = AssetDatabase.LoadAssetAtPath<TextAsset>(
                 $"{rootPass}/{t.Name}");
-            //Debug.Log("exefiles[i].Name名字为：" + t.Name);//exe文件名
-            //Debug.Log("exefiles[i].FullName名字为：" + files[i].FullName);//exe文件的全部路径名
-            //Debug.Log("exefiles[i].DirectoryName名字为：" + files[i].DirectoryName);//exe所在文件夹的文件夹路径
+                //Debug.Log("exefiles[i].Name名字为：" + t.Name);//exe文件名
+            }
+            if (t.Name.EndsWith(".fontsettings"))
+            {
+                targetFont = AssetDatabase.LoadAssetAtPath<Font>(
+                    $"{rootPass}/{t.Name}");
+            }
+            if (t.Name.EndsWith(".mat"))
+            {
+                fontMaterial = AssetDatabase.LoadAssetAtPath<Material>(
+                    $"{rootPass}/{t.Name}");
+            }
         }
-        //判断文件的后缀
-        if (t.Name.EndsWith(".fnt"))
+
+        if (targetFont == null)
         {
-            fntData = AssetDatabase.LoadAssetAtPath<TextAsset>(
-                $"{rootPass}/{t.Name}");
-            //Debug.Log("exefiles[i].Name名字为：" + t.Name);//exe文件名
+            targetFont = new Font();
+            AssetDatabase.CreateAsset(targetFont, rootPass + "/" + needName + ".fontsettings");
+        }
+
+        if (fontMaterial == null)
+        {
+            fontMaterial = new Material(Shader.Find("GUI/Text Shader"));
+            AssetDatabase.CreateAsset(fontMaterial, rootPass + "/" + needName + ".mat");
+        }
+        else
+        {
+            fontMaterial.shader = Shader.Find("GUI/Text Shader");
         }
     }
-
-    targetFont = new Font();
-    fontMaterial = new Material(Shader.Find("UI/Default"));
-    AssetDatabase.CreateAsset(targetFont, rootPass + "/num3"+".fontsettings");
-    AssetDatabase.CreateAsset(fontMaterial, rootPass + "/num3" + ".mat");
-}
     [MenuItem("Assets/CreateBMFont")]
-    [System.Obsolete]
     public static void CreateBmFont()
     {
-        Init();
+        NewFont();
 
         BMFontReader.Load(bmFont, fntData.name, fntData.bytes); // 借用NGUI封装的读取类
         CharacterInfo[] characterInfo = new CharacterInfo[bmFont.glyphs.Count];
@@ -76,9 +101,10 @@ public class CreateFont : Editor
         }
         targetFont.material = fontMaterial;
 
+        EditorUtility.SetDirty(targetFont);
+
         Debug.Log("create font <" + targetFont.name + "> success");
     }
-}
 
 public class BMFont
 {
